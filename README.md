@@ -1,21 +1,37 @@
 from flask import Flask
 import os
-from datetime import datetime
+import datetime
 import subprocess
+import getpass
+import pytz  # Install via 'pip install pytz'
 
 app = Flask(__name__)
 
-@app.route("/htop")
+@app.route('/htop')
 def htop():
-    # Get the system username
-    username = os.getlogin()
+    name = "Your Full Name"  # Replace with your actual name
+    username = getpass.getuser()  # More reliable way to get the system username
 
-    # Get the current server time in IST
-    server_time = datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S')
+    # Get server time in IST
+    ist = pytz.timezone('Asia/Kolkata')
+    server_time = datetime.datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
 
-    # Get the output of the `top` command
-    top_output = subprocess.check_output("top -n 1", shell=True).decode()
+    # Get system processes (Windows uses 'tasklist', Linux uses 'top')
+    try:
+        if os.name == "nt":  # Windows
+            top_output = subprocess.check_output("tasklist | findstr /B /C:\"Image Name\"", shell=True).decode("utf-8")
+        else:  # Linux/Mac
+            top_output = subprocess.check_output("top -bn1 | head -10", shell=True).decode("utf-8")
+    except Exception as e:
+        top_output = f"Error fetching process list: {str(e)}"
 
-    # Replace 'Your Name' with your full name
     return f"""
-    <h1>System
+    <h1>Server Info</h1>
+    <p><b>Name:</b> {name}</p>
+    <p><b>Username:</b> {username}</p>
+    <p><b>Server Time (IST):</b> {server_time}</p>
+    <pre>{top_output}</pre>
+    """
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)
